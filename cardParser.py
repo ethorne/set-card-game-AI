@@ -1,21 +1,19 @@
 import cv2
 import argparse
 
-screenRes = 1280, 800
 argParser = argparse.ArgumentParser()
 
 def configArgParser():
-	argParser.add_argument('-i', '--image', required=True, help='path to input image')	
-
+	argParser.add_argument("-i", "--image", required=True, help="path to input image")	
 
 def outline(image, contour, color):
 	cv2.drawContours(image, [contour], -1, color, 2)
 
 def main():
-	windowNames = ['original image', 'modified image']
+	windowNames = ["original image", "modified image"]
 	args = vars(argParser.parse_args())
 
-	image = cv2.imread(args['image'])
+	image = cv2.imread(args["image"])
 
 	gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 	blurred = cv2.GaussianBlur(gray, (5,5), 0)
