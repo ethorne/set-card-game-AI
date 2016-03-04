@@ -29,9 +29,9 @@ class Card():
 		self.Count = self.GetCount(cardImage)
 
 	def __repr__(self):
-		shapes = ['oval', 'diamond', 'squiggle', 'n/a']
-		colors = ['red', 'green', 'purple', 'n/a']
-		shades = ['solid', 'striped', 'outlined', 'n/a']
+		shapes = ['oval', 'diamond', 'squiggle']
+		colors = ['red', 'green', 'purple']
+		shades = ['solid', 'striped', 'outlined']
 		
 		ret = 'Shape:\t'
 		if (self.Shape != None):
@@ -93,7 +93,7 @@ class Card():
 		histogram /= histogram.sum()
 
 		# find dominant color that is not white or black
-		for (percent, color) in zip(histogram, cluster.cluster_centers_):
+		for (percent, color) in zip(histogram, cluster.cluster_centers_):			
 			red = color[0]
 			green = color[1]
 			blue = color[2]
