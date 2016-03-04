@@ -94,8 +94,6 @@ class Card():
 
 		# find dominant color that is not white or black
 		for (percent, color) in zip(histogram, cluster.cluster_centers_):
-			print('color ', color)
-
 			red = color[0]
 			green = color[1]
 			blue = color[2]
