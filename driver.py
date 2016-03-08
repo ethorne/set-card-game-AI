@@ -12,12 +12,16 @@ def main():
 	windowNames = ["original image", "modified image"]
 	args = vars(argParser.parse_args())
 
-	start = timeit.default_timer()
-	setCard = Card(cv2.imread(args["image"]))
-	stop = timeit.default_timer()
-	print(setCard)
+	
+	for i in range(1,8):
+		cardName = 'testImages/set_card' + str(i) + '.jpg';
+		print cardName
+		start = timeit.default_timer()
+		setCard = Card(cv2.imread(cardName))
+		stop = timeit.default_timer()
+		print(setCard)
+		print "\nTIME ELAPSED : ", (stop - start), " s"
+		print "\n------------------------------\n"
 
-	print "\nTIME ELAPSED : ", (stop - start), " s"
-
-configArgParser()
+#configArgParser()
 main()

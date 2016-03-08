@@ -23,16 +23,12 @@ class Card():
 	""" Represents a card for the game Set """
 
 	def __init__(self, cardImage):
-		self.Color = self.GetColor(cardImage)
-
-		mod = self._preprocess(cardImage)
-
-		# Count must be called before Shade
-		#	because Count populates self._singleShape
-		self.Count = self.GetCount(mod)
-
-		self.Shade = self.GetShade(cardImage)
-		self.Shape = self.GetShape(mod)
+		# Count must be called first
+		#	because Count populates self._singleShapeMod
+		#	as well as self._singleShapeOrig
+		self.Count = self.GetCount(cardImage)
+		self.Shape = self.GetShape()
+		self.Color, self.Shade = self.GetColorAndShade()
 
 	def __repr__(self):
 		shapes = ['oval', 'diamond', 'squiggle']
@@ -54,20 +50,18 @@ class Card():
 		ret += '\nCount:\t' + str(self.Count)
 		return ret
 
-	def GetColor(self, image):
-		# there should only be three colors
+	def GetColorAndShade(self):
+		# there should only be two colors
 		#	white (card background)
-		#	black (surface background)
 		#	card color
-		numColorsOnCard = 3
+		numColorsOnCard = 2
 
 		# these values are determiend experimentally
-		blackLimit = 50			# if the RGB vals are below this, color is black
 		whiteLimit = 200		# if the RGB vals are above this, color is white
 		purpleDifference = 35	# if abs(red-blue) is less than this, color is purple
 
-		# convert image to RGB
-		imageRgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+		# convert self._singleShapeOrig to RGB
+		imageRgb = cv2.cvtColor(self._singleShapeOrig, cv2.COLOR_BGR2RGB)
 
 		# reshape matrix into list of pixels
 		imageRgb = imageRgb.reshape((imageRgb.shape[0] * imageRgb.shape[1], 3))
@@ -83,69 +77,82 @@ class Card():
 		histogram = histogram.astype("float")
 		histogram /= histogram.sum()
 
-		# find dominant color that is not white or black
-		for (percent, color) in zip(histogram, cluster.cluster_centers_):			
+		dominantColor = None
+		shade = None
+		# find dominant color that is not white
+		for (percent, color) in zip(histogram, cluster.cluster_centers_):
 			red = color[0]
 			green = color[1]
 			blue = color[2]
-
-			if (red < blackLimit and green < blackLimit and blue < blackLimit):
-				# this is the black surface background
-				continue
 
 			if (red > whiteLimit and green > whiteLimit and blue > whiteLimit):
 				# this is the white card background
 				continue
 
 			if (green > red and green > blue):
-				return COLOR.Green
+				dominantColor = COLOR.Green
+				shade = percent
+				break
 
 			if (abs(red - blue) < purpleDifference):
-				return COLOR.Purple
+				dominantColor = COLOR.Purple
+				shade = percent
+				break
 
 			if (red > green and red > blue):
-				return COLOR.Red
+				dominantColor = COLOR.Red
+				shade = percent
+				break
 
-		return None
+		print ' --- dominant color percent --- ', shade	
 
-	def GetShape(self, image):
-		shapeTemplates = ['templates/oval.jpg',
-						'templates/diamond.jpg',
-						'templates/squiggle.jpg']
+		if (shade < 0.20):
+			shade = SHADE.Outlined
+		elif (shade < 0.50):
+			shade = SHADE.Striped
+		else:
+			shade = SHADE.Solid
 
-		shapeSize = (self._singleShape.shape[1], self._singleShape.shape[0])
-		mse = 1.0e400
-		shape = None;
-		for i in range(len(shapeTemplates)):
-			tmp = cv2.imread(shapeTemplates[i], 0)
-			tmp = cv2.resize(tmp, shapeSize, interpolation=cv2.INTER_CUBIC)
-			newMse = self._mse(tmp, self._singleShape)
-			if newMse < mse:
-				shape = i
-				mse = newMse
-		return shape
-
-	def GetShade(self, image):
-		
-		return None
+		return dominantColor, shade
 
 	def GetCount(self, image):
+		mod = self._preprocess(image)
+
 		count = 0
-		contours = cv2.findContours(image.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0];		
+		contours = cv2.findContours(mod.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0];		
 		savedSingleShape = False
+
 		for contour in contours:
 			if cv2.contourArea(contour) < 500: # this number is subject to change based on what size the standard image will be
 				continue
 			
 			x,y,w,h = cv2.boundingRect(contour)
-
+			
 			if not savedSingleShape:
-				self._singleShape = image[y:(y+h), x:(x+w)] 
+				self._singleShapeMod = mod[y:(y+h), x:(x+w)]
+				self._singleShapeOrig = image[y:(y+h), x:(x+w)]
 				savedSingleShape = True
 
 			count += 1
 
 		return count
+
+	def GetShape(self):
+		shapeTemplates = ['templates/oval.jpg',
+						'templates/diamond.jpg',
+						'templates/squiggle.jpg']
+
+		shapeSize = (self._singleShapeMod.shape[1], self._singleShapeMod.shape[0])
+		mse = 1.0e400
+		shape = None;
+		for i in range(len(shapeTemplates)):
+			tmp = cv2.imread(shapeTemplates[i], 0)
+			tmp = cv2.resize(tmp, shapeSize, interpolation=cv2.INTER_CUBIC)
+			newMse = self._mse(tmp, self._singleShapeMod)
+			if newMse < mse:
+				shape = i
+				mse = newMse
+		return shape
 
 	def _preprocess(self, image):
 		# blur, contrast, denoise, and take inverse threshold
