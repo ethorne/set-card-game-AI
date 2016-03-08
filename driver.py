@@ -13,11 +13,15 @@ def main():
 	args = vars(argParser.parse_args())
 
 	
-	for i in range(1,8):
-		cardName = 'testImages/set_card' + str(i) + '.jpg';
+	for i in range(1,15):
+		cardName = 'testImages/' + str(i) + '.png';
+		cardImage = cv2.imread(cardName)
+		if cardImage == None:
+			print 'Could not read image at ' + cardName
+			continue
 		print cardName
 		start = timeit.default_timer()
-		setCard = Card(cv2.imread(cardName))
+		setCard = Card(cardImage)
 		stop = timeit.default_timer()
 		print(setCard)
 		print "\nTIME ELAPSED : ", (stop - start), " s"
