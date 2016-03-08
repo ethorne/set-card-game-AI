@@ -69,8 +69,6 @@ class Card():
 		# convert image to RGB
 		imageRgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-		# TODO : saturate image before 
-
 		# reshape matrix into list of pixels
 		imageRgb = imageRgb.reshape((imageRgb.shape[0] * imageRgb.shape[1], 3))
 		
@@ -100,7 +98,7 @@ class Card():
 				continue
 
 			if (green > red and green > blue):
-			 	return COLOR.Green
+				return COLOR.Green
 
 			if (abs(red - blue) < purpleDifference):
 				return COLOR.Purple
@@ -111,24 +109,21 @@ class Card():
 		return None
 
 	def GetShape(self, image):
-		return None
-		shapeTemplates = ['tempaltes/oval.jpg',
-						'tempaltes/squiggle.jpg',
-						'tempaltes/diamond.jpg']
+		shapeTemplates = ['templates/oval.jpg',
+						'templates/diamond.jpg',
+						'templates/squiggle.jpg']
 
 		shapeSize = (self._singleShape.shape[1], self._singleShape.shape[0])
-		zeros = np.zeros(shapeSize)
-
-		for templateLocation in shapeTemplates:
-			print templateLocation
-			template = cv2.imread(templateLocation, 0)
-			resizedTemplate = cv2.resize(template, shapeSize, cv2.INTER_CUBIC)
-
-			diff = zeros.copy()
-			diff = cv2.absdiff(resizedTemplate, self._singleShape, diff)
-			val = cv2.bitwise_and(diff, zeros)
-			print 'val', val 
-		return None
+		mse = 1.0e400
+		shape = None;
+		for i in range(len(shapeTemplates)):
+			tmp = cv2.imread(shapeTemplates[i], 0)
+			tmp = cv2.resize(tmp, shapeSize, interpolation=cv2.INTER_CUBIC)
+			newMse = self._mse(tmp, self._singleShape)
+			if newMse < mse:
+				shape = i
+				mse = newMse
+		return shape
 
 	def GetShade(self, image):
 		
@@ -174,6 +169,9 @@ class Card():
 
 		return cdf[image]
 
-
-
+	def _mse(self, imageA, imageB):
+		err = np.sum((imageA.astype("float") - imageB.astype("float")) ** 2)
+		err /= float(imageA.shape[0] * imageA.shape[1])
+		
+		return err
 
