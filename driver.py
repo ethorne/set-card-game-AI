@@ -17,10 +17,10 @@ def main():
 		print "\nTIME ELAPSED : ", (stop - start), " s"
 		print "\n------------------------------\n"
 		
-		# windowName = 'image #' + str(i)
-		# cv2.imshow(windowName, cardImage)
-		# k = cv2.waitKey(0)
-		# cv2.destroyAllWindows()
+		windowName = 'image #' + str(i)
+		cv2.imshow(windowName, cardImage)
+		k = cv2.waitKey(0)
+		cv2.destroyAllWindows()
 
 
 main()
