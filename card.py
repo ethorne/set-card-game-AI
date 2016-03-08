@@ -23,10 +23,12 @@ class Card():
 	""" Represents a card for the game Set """
 
 	def __init__(self, cardImage):
+		image = self._crop(cardImage, .08)
+
 		# Count must be called first
 		#	because Count populates self._singleShapeMod
 		#	as well as self._singleShapeOrig
-		self.Count = self.GetCount(cardImage)
+		self.Count = self.GetCount(image)
 		self.Shape = self.GetShape()
 		self.Color, self.Shade = self.GetColorAndShade()
 
@@ -116,25 +118,39 @@ class Card():
 		return dominantColor, shade
 
 	def GetCount(self, image):
-		mod = self._preprocess(image)
+		cny = cv2.Canny(image.copy(), 225, 250)
 
 		count = 0
-		contours = cv2.findContours(mod.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0];		
 		savedSingleShape = False
-
+		contours = cv2.findContours(cny, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0];		
 		for contour in contours:
 			if cv2.contourArea(contour) < 500: # this number is subject to change based on what size the standard image will be
 				continue
-			
-			x,y,w,h = cv2.boundingRect(contour)
-			
+
 			if not savedSingleShape:
-				self._singleShapeMod = mod[y:(y+h), x:(x+w)]
-				self._singleShapeOrig = image[y:(y+h), x:(x+w)]
+				box = cv2.cv.BoxPoints(cv2.minAreaRect(contour))
+				box = np.int0(box)
+
+				# draw a thick line around the contour we are interested in
+				cv2.drawContours(cny, [contour], 0, [255,255,255], 2)
+
+				self._singleShapeMod = self._fourPointTransform(cny, box)
+				self._singleShapeOrig = self._fourPointTransform(image, box)
 				savedSingleShape = True
 
 			count += 1
 
+
+		# cny = cv2.Canny(image.copy(), 225, 250)
+
+		# cv2.namedWindow('1', cv2.WINDOW_NORMAL)
+		# cv2.imshow('1', self._singleShapeMod)
+		# cv2.namedWindow('2', cv2.WINDOW_NORMAL)
+		# cv2.imshow('2', self._singleShapeOrig)
+		# cv2.moveWindow('1', 0, 0)
+		# cv2.moveWindow('2', 200, 0)
+		# k = cv2.waitKey(0)
+		# cv2.destroyAllWindows()
 		return count
 
 	def GetShape(self):
@@ -154,6 +170,7 @@ class Card():
 				mse = newMse
 		return shape
 
+	# UNUSED - remove?
 	def _preprocess(self, image):
 		# blur, contrast, denoise, and take inverse threshold
 		mod = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
@@ -165,6 +182,7 @@ class Card():
 				
 		return mod
 
+	# UNUSED - remove?
 	def _increaseContrast(self, image):
 		hist,bins = np.histogram(image.flatten(),256,[0,256])
 		cdf = hist.cumsum()
@@ -181,4 +199,61 @@ class Card():
 		err /= float(imageA.shape[0] * imageA.shape[1])
 		
 		return err
+
+	# orders points (tl, tr, br, bl) for _fourPointFreeTransform
+	def _orderPoints(self, pts):
+		rect = np.zeros((4, 2), dtype = "float32")
+	
+		# top-left (tl) point has min sum
+		# bottom-right (br point has max sum
+		s = pts.sum(axis = 1)
+		rect[0] = pts[np.argmin(s)]
+		rect[2] = pts[np.argmax(s)]
+	 
+		# top-right (tr) point has min difference
+		# bottom-left (br) has max difference
+		diff = np.diff(pts, axis = 1)
+		rect[1] = pts[np.argmin(diff)]
+		rect[3] = pts[np.argmax(diff)]
+	 
+	 	return rect
+
+	def _fourPointTransform(self, image, pts):
+		rect = self._orderPoints(pts)
+		(tl, tr, br, bl) = rect
+	 
+		# compute the width of the new image
+		# 	max( distance between br and bl, distance between tr and tl)
+
+		widthTop = np.sqrt(((tr[0] - tl[0]) ** 2) + ((tr[1] - tl[1]) ** 2))
+		widthBottom = np.sqrt(((br[0] - bl[0]) ** 2) + ((br[1] - bl[1]) ** 2))
+		width = max(int(widthTop), int(widthBottom))
+	 
+	 	# same deal for height
+		heightLeft = np.sqrt(((tl[0] - bl[0]) ** 2) + ((tl[1] - bl[1]) ** 2))
+		heightRight = np.sqrt(((tr[0] - br[0]) ** 2) + ((tr[1] - br[1]) ** 2))
+		height = max(int(heightLeft), int(heightRight))
+	 
+		# now that we have the dimensions of the new image, construct
+		# the set of destination points to obtain a "birds eye view",
+		# (i.e. top-down view) of the image, again specifying points
+		# in the top-left, top-right, bottom-right, and bottom-left
+		# order
+		dst = np.array([
+			[0, 0],
+			[width - 1, 0],
+			[width - 1, height - 1],
+			[0, height - 1]], dtype = "float32")
+	 
+		# compute the perspective transform matrix and then apply it
+		M = cv2.getPerspectiveTransform(rect, dst)
+		warped = cv2.warpPerspective(image, M, (width, height))
+	 
+		# return the warped image
+		return warped
+
+	def _crop(self, image, percent):
+		widthDiff = image.shape[0] * percent
+		heightDiff = image.shape[1] * percent
+		return image[widthDiff:(image.shape[0] - widthDiff), heightDiff:(image.shape[1] - heightDiff)]
 
