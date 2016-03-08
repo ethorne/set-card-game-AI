@@ -1,5 +1,6 @@
 import cv2
 import argparse
+import timeit
 from card import Card
 
 argParser = argparse.ArgumentParser()
@@ -11,17 +12,12 @@ def main():
 	windowNames = ["original image", "modified image"]
 	args = vars(argParser.parse_args())
 
+	start = timeit.default_timer()
 	setCard = Card(cv2.imread(args["image"]))
+	stop = timeit.default_timer()
 	print(setCard)
 
-	# cv2.namedWindow(windowNames[0], cv2.WINDOW_NORMAL)
-	# cv2.imshow(windowNames[0], image);
-
-	# cv2.namedWindow(windowNames[1], cv2.WINDOW_NORMAL)
-	# cv2.imshow(windowNames[1], thresh);
-
-	# k = cv2.waitKey(0)
-	# cv2.destroyAllWindows()
+	print "\nTIME ELAPSED : ", (stop - start), " s"
 
 configArgParser()
 main()

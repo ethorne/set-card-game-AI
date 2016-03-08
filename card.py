@@ -23,10 +23,16 @@ class Card():
 	""" Represents a card for the game Set """
 
 	def __init__(self, cardImage):
-		self.Shape = self.GetShape(cardImage)
 		self.Color = self.GetColor(cardImage)
-		self.Shade = self.GetShape(cardImage)
-		self.Count = self.GetCount(cardImage)
+
+		mod = self._preprocess(cardImage)
+
+		# Count must be called before Shade
+		#	because Count populates self._singleShape
+		self.Count = self.GetCount(mod)
+
+		self.Shade = self.GetShade(cardImage)
+		self.Shape = self.GetShape(mod)
 
 	def __repr__(self):
 		shapes = ['oval', 'diamond', 'squiggle']
@@ -47,19 +53,6 @@ class Card():
 
 		ret += '\nCount:\t' + str(self.Count)
 		return ret
-
-	def GetShape(self, image):
-		imageGray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-		imageBlurred = cv2.GaussianBlur(imageGray, (5,5), 0)
-		imageThresh = cv2.threshold(imageBlurred, 60, 255, cv2.THRESH_BINARY)[1]
-
-		contours = cv2.findContours(imageThresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-		contours = contours[0]
-
-		for contour in contours:
-			cv2.drawContours(image, [contour], -1, [0,0,0], 2)
-
-		return None
 
 	def GetColor(self, image):
 		# there should only be three colors
@@ -117,10 +110,70 @@ class Card():
 
 		return None
 
+	def GetShape(self, image):
+		return None
+		shapeTemplates = ['tempaltes/oval.jpg',
+						'tempaltes/squiggle.jpg',
+						'tempaltes/diamond.jpg']
+
+		shapeSize = (self._singleShape.shape[1], self._singleShape.shape[0])
+		zeros = np.zeros(shapeSize)
+
+		for templateLocation in shapeTemplates:
+			print templateLocation
+			template = cv2.imread(templateLocation, 0)
+			resizedTemplate = cv2.resize(template, shapeSize, cv2.INTER_CUBIC)
+
+			diff = zeros.copy()
+			diff = cv2.absdiff(resizedTemplate, self._singleShape, diff)
+			val = cv2.bitwise_and(diff, zeros)
+			print 'val', val 
+		return None
+
 	def GetShade(self, image):
-		# NOT IMPLEMENTED
+		
 		return None
 
 	def GetCount(self, image):
-		# NOT IMPLEMENTED
-		return None
+		count = 0
+		contours = cv2.findContours(image.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0];		
+		savedSingleShape = False
+		for contour in contours:
+			if cv2.contourArea(contour) < 500: # this number is subject to change based on what size the standard image will be
+				continue
+			
+			x,y,w,h = cv2.boundingRect(contour)
+
+			if not savedSingleShape:
+				self._singleShape = image[y:(y+h), x:(x+w)] 
+				savedSingleShape = True
+
+			count += 1
+
+		return count
+
+	def _preprocess(self, image):
+		# blur, contrast, denoise, and take inverse threshold
+		mod = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+		mod = cv2.GaussianBlur(mod, (5,5), 0)
+		mod = self._increaseContrast(mod)
+
+		mod = cv2.fastNlMeansDenoising(mod, None, 10, 21, 20)
+		mod = cv2.threshold(mod, 60, 255, cv2.THRESH_BINARY_INV)[1]
+				
+		return mod
+
+	def _increaseContrast(self, image):
+		hist,bins = np.histogram(image.flatten(),256,[0,256])
+		cdf = hist.cumsum()
+		cdf_normalized = cdf * hist.max()/ cdf.max()
+		
+		cdf_m = np.ma.masked_equal(cdf,0)
+		cdf_m = (cdf_m - cdf_m.min())*255/(cdf_m.max()-cdf_m.min())
+		cdf = np.ma.filled(cdf_m,0).astype('uint8')
+
+		return cdf[image]
+
+
+
+
