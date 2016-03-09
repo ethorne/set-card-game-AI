@@ -4,6 +4,8 @@ import argparse
 import imutils
 import matplotlib.pyplot as plt
 
+<<<<<<< HEAD
+ 
 class card:
     
     MIN_HEIGHT    = 120
@@ -42,8 +44,17 @@ class card:
             else:
                 return False
 
-#cap = cv2.VideoCapture(1);
-#cap = cv2.VideoCapture(int(args["video"]));
+||||||| merged common ancestors
+cap = cv2.VideoCapture(1);
+ 
+=======
+argParser = argparse.ArgumentParser()
+argParser.add_argument("-v", "--video", required=True, help = "video number idicator (try 0)")
+args = vars(argParser.parse_args())
+
+cap = cv2.VideoCapture(int(args["video"]));
+
+>>>>>>> added command line configurability of video port
 def mse(imageA, imageB):
     # the 'Mean Squared Error' between the two images is the
     # sum of the squared difference between the two images;
