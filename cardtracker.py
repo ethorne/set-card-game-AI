@@ -1,10 +1,15 @@
 import cv2
 import numpy as np
+import argparse
 import imutils
 import matplotlib.pyplot as plt
 
-cap = cv2.VideoCapture(1);
- 
+argParser = argparse.ArgumentParser()
+argParser.add_argument("-v", "--video", required=True, help = "video number idicator (try 0)")
+args = vars(argParser.parse_args())
+
+cap = cv2.VideoCapture(int(args["video"]));
+
 def mse(imageA, imageB):
     # the 'Mean Squared Error' between the two images is the
     # sum of the squared difference between the two images;
