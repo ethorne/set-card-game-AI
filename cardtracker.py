@@ -27,7 +27,7 @@ class card:
         self.x,self.y,self.w,self.h = cv2.boundingRect(cnt)
 
     def isCard(self, contours):
-    # Make sure the image is of a card, by testing :
+        # Make sure the image is of a card, by testing :
         # Height-Width ratio
         # Number of contours in bounding box
         # Total Perimeter of contours
@@ -77,16 +77,13 @@ def createMask(frame):
     return mask
 
 def findContours(mask):
-    #Find Contours
     im2, contours, hierarchy = cv2.findContours(mask,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-    #cv2.drawContours(frame,contours,-1,(0,0,255),2)
-    #cv2.imshow("Contours" , frame)
     return contours
 
-def drawBoundingBox(x,y,w,h, index,perimeter):
+def drawBoundingBox(x,y,w,h, maxCards,perimeter):
     
     cv2.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),2)
-    cv2.putText(frame,'Card '       + str(index)                   ,(x+15,y-60),1,1,(0,255,0))
+    cv2.putText(frame,'Card '       + str(maxCards)                   ,(x+15,y-60),1,1,(0,255,0))
     #cv2.putText(frame,'Height : '   + str(h) + ', Width : '+ str(w),(x+15,y-40),1,1,(0,255,0))
     #cv2.putText(frame,'Perimeter : '+ str(perimeter)               ,(x+15,y-20),1,1,(0,255,0))
     
@@ -98,47 +95,49 @@ def makeSameSize(imageA,imageB):
     imageA = cv2.resize(imageA,(width, height), interpolation = cv2.INTER_CUBIC)
     return imageA
 
-def saveImage(roi,index):
+def saveImage(roi,maxCards):
 
-    # Should be getting a cardObj index and roi, and based on comparisions should update the card.cardImage np.array
+    # Should be getting a cardObj maxCards and roi, and based on comparisions should update the card.cardImage np.array
 
-    if index == 12 : # If this is the first card found, save it 
-        cv2.imwrite('images/extracted/'+str(index)+'.png', roi)
-        index = index - 1
+    if maxCards == 12 : # If this is the first card found, save it 
+        cv2.imwrite('images/extracted/'+str(maxCards)+'.png', roi)
+        maxCards = maxCards - 1
 
     else:
-        for i in range(1, index):
+        for i in range(1, maxCards):
 
-            savedImage = cv2.imread('images/extracted/'+str(index+1)+'.png')
+            savedImage = cv2.imread('images/extracted/'+str(maxCards+1)+'.png')
             roi        = makeSameSize (roi,savedImage)
             similar    = compareImages(roi,savedImage)
             
             if similar == False:
 
-                cv2.imwrite('images/extracted/'+str(index)+'.png', roi)
-                index = index - 1
+                cv2.imwrite('images/extracted/'+str(maxCards)+'.png', roi)
+                maxCards = maxCards - 1
 
-    return index
+    return maxCards
 
 def display(frame):
-
+    #cv2.drawContours(frame,contours,-1,(0,0,255),2)
+    #cv2.imshow("Contours" , frame)
     cv2.imshow("Contours" , frame)
 
 cap = cv2.VideoCapture(1);
 while True:
         
-    # Get Image
     _, frame = cap.read();
-    index    = 12          # Total Number of Cards we are able to detect
+    maxCards    = 12          # Total Number of Cards we are able to detect
     mask     = createMask(frame)
     contours = findContours(mask)
     
-    # Should be creating and dealing with an array of card type objects 
+    # Should be creating and dealing with an array of card type objects
+    '''
     cardObj = card()
     cardList = []
-    for i in range(index):
+    for i in range(maxCards):
         a_card  = card()
         cardList.append(a_card) 
+    '''
 
     for cnt in contours:
         perimeter = cv2.arcLength(cnt,True)
@@ -147,9 +146,9 @@ while True:
 
         if len(approx)==4 and perimeter > 400 and perimeter < 1400 and w > 120 and h > 180:
 
-                drawBoundingBox(x,y,w,h,index,perimeter)
+                drawBoundingBox(x,y,w,h,maxCards,perimeter)
                 roi=frame[y:y+h,x:x+w]
-                index = saveImage(roi,index)
+                maxCards = saveImage(roi,maxCards)
                         
     display(frame)
     k = cv2.waitKey(5) & 0xFF
@@ -157,4 +156,3 @@ while True:
 
 cv2.destroyAllWindows()
 cap.release()
-
