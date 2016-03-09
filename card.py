@@ -30,7 +30,7 @@ class Card():
 		#	as well as self._singleShapeOrig
 		self.Count = self.GetCount(image)
 		self.Shape = self.GetShape()
-		self.Color = self.GetColor()
+		self.Color = self.GetColor() # must be called before shade
 		self.Shade = self.GetShade()
 
 	def __repr__(self):
@@ -60,15 +60,11 @@ class Card():
 		numColorsOnCard = 2
 
 		hueMax = 179.0 # max hue value for openCv
-		# for an explanation of these fractions, refer to a HSV color wheel
+		# for an explanation of these fractions, refer to an HSV color wheel
 		redRange = ( (3.0/4.0)*hueMax, (1.0/4.0)*hueMax )
 		greenRange = ( (1.0/4.0)*hueMax, (1.0/2.0)*hueMax )
 		purpleRange = ( (1.0/2.0)*hueMax, (3.0/4.0)*hueMax )
 		
-		print 'redRange', redRange
-		print 'greenRange', greenRange
-		print 'purpleRange', purpleRange
-
 		# convert self._singleShapeOrig to RGB
 		imageHsv = cv2.cvtColor(self._singleShapeOrig, cv2.COLOR_BGR2HSV)
 
@@ -89,14 +85,13 @@ class Card():
 		# find color with highest saturation
 		highestSat = -1.0e400
 		nonWhiteColor = None
+		self._nonWhitePercent = None
 		for (percent, color) in zip(histogram, cluster.cluster_centers_):
 			if (color[1] > highestSat):
 				highestSat = color[1]
 				nonWhiteColor = color
+				self._nonWhitePercent = percent
 
-		print '\n'
-		print 'hue:\t', color[0], '\nsat:\t', color[1], '\nval:\t', color[2]
-		print '\n'
 
 		hue = nonWhiteColor[0]
 
@@ -110,6 +105,34 @@ class Card():
 		return None
 
 	def GetShade(self):
+		# draw contours - if theres a lot, then its shaded
+		# otherwise, refer to self._nonWhitePercent
+
+		mod = self._increaseContrast(self._singleShapeOrig.copy())
+		mod = self._crop(mod, .3)
+		cny = cv2.Canny(mod, 0, 255)
+		
+		count = 0
+		contours = cv2.findContours(cny, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0];
+
+		# cv2.namedWindow('mod', cv2.WINDOW_NORMAL)
+		# cv2.imshow('mod', mod)
+		# cv2.namedWindow('cny', cv2.WINDOW_NORMAL)
+		# cv2.imshow('cny', cny)
+		# cv2.moveWindow('cny', 0, 100)
+		# k = cv2.waitKey(0)
+		# cv2.destroyAllWindows()
+
+		print 'contours', len(contours), '\n_nonWhitePercent', self._nonWhitePercent
+
+		if (len(contours) > 10):
+			return SHADE.Striped
+		if self._nonWhitePercent > .5:
+			return SHADE.Solid
+		else:
+			return SHADE.Outlined
+		
+
 		return None;
 
 	def GetCount(self, image):
@@ -137,6 +160,9 @@ class Card():
 		return count
 
 	def GetShape(self):
+		# TODO : determine if we need to rotate the image
+		#			by comparing ratios
+
 		shapeTemplates = ['templates/oval.jpg',
 						'templates/diamond.jpg',
 						'templates/squiggle.jpg']
@@ -205,6 +231,17 @@ class Card():
 	 
 		# return the warped image
 		return warped
+
+	def _increaseContrast(self, image):
+		hist,bins = np.histogram(image.flatten(),256,[0,256])
+		cdf = hist.cumsum()
+		cdf_normalized = cdf * hist.max()/ cdf.max()
+		
+		cdf_m = np.ma.masked_equal(cdf,0)
+		cdf_m = (cdf_m - cdf_m.min())*255/(cdf_m.max()-cdf_m.min())
+		cdf = np.ma.filled(cdf_m,0).astype('uint8')
+
+		return cdf[image]
 
 	def _crop(self, image, percent):
 		widthDiff = image.shape[0] * percent
