@@ -4,7 +4,7 @@ from card import Card
 
 def main():
 	for i in range(1,15):
-		cardName = 'testImages/' + str(i) + '.png';
+		cardName = 'images/extracted/' + str(i) + '.png';
 		cardImage = cv2.imread(cardName)
 		if cardImage == None:
 			print 'Could not read image at ' + cardName

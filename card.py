@@ -23,17 +23,32 @@ class Card():
 	""" Represents a card for the game Set """
 
 	def __init__(self, cardImage):
+		self._singleShapeMod = None
+		self._singleShapeOrig = None
+		self.isValid = False
+
 		image = self._crop(cardImage, .08)
 
 		# Count must be called first
 		#	because Count populates self._singleShapeMod
 		#	as well as self._singleShapeOrig
 		self.Count = self.GetCount(image)
+		if (self._singleShapeMod == None or self._singleShapeOrig == None):
+			self.Shape = None
+			self.Color = None
+			self.Shade = None
+			return
+
 		self.Shape = self.GetShape()
 		self.Color = self.GetColor() # must be called before shade
 		self.Shade = self.GetShade()
 
+		self.isValid = self.Count != None and self.Shape != None and self.Color != None and self.Shade != None
+
 	def __repr__(self):
+		return self.printCard()
+
+	def printCard(self):
 		shapes = ['oval', 'diamond', 'squiggle']
 		colors = ['red', 'green', 'purple']
 		shades = ['solid', 'striped', 'outlined']
@@ -52,6 +67,36 @@ class Card():
 
 		ret += '\nCount:\t' + str(self.Count)
 		return ret
+
+	# this code smells - seperate query and modifier
+	# query - number of shapes on card (count)
+	# modifier - populates necessary fields for shape, shade, and color
+	#			 these fields are _singleShapeMod (a single countour line)
+	#			 and _singleShapeOrig (a single shape from the card image, cropped)
+	def GetCount(self, image):
+		cny = cv2.Canny(image.copy(), 100, 250)
+
+		count = 0
+		savedSingleShape = False
+		contours = cv2.findContours(cny, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0];		
+		for contour in contours:
+			if cv2.contourArea(contour) < 2500: # this number is subject to change based on what size the standard image will be
+				continue
+
+			if not savedSingleShape:
+				box = cv2.cv.BoxPoints(cv2.minAreaRect(contour))
+				box = np.int0(box)
+
+				# draw a thick line around the contour we are interested in
+				cv2.drawContours(cny, [contour], 0, [255,255,255], 2)
+
+				self._singleShapeMod = self._fourPointTransform(cny, box)
+				self._singleShapeOrig = self._fourPointTransform(image, box)
+				savedSingleShape = True
+
+			count += 1
+
+		return count
 
 	def GetColor(self):
 		# there should only be two colors
@@ -115,16 +160,6 @@ class Card():
 		count = 0
 		contours = cv2.findContours(cny, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0];
 
-		# cv2.namedWindow('mod', cv2.WINDOW_NORMAL)
-		# cv2.imshow('mod', mod)
-		# cv2.namedWindow('cny', cv2.WINDOW_NORMAL)
-		# cv2.imshow('cny', cny)
-		# cv2.moveWindow('cny', 0, 100)
-		# k = cv2.waitKey(0)
-		# cv2.destroyAllWindows()
-
-		print 'contours', len(contours), '\n_nonWhitePercent', self._nonWhitePercent
-
 		if (len(contours) > 10):
 			return SHADE.Striped
 		if self._nonWhitePercent > .5:
@@ -135,37 +170,13 @@ class Card():
 
 		return None;
 
-	def GetCount(self, image):
-		cny = cv2.Canny(image.copy(), 100, 250)
-
-		count = 0
-		savedSingleShape = False
-		contours = cv2.findContours(cny, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0];		
-		for contour in contours:
-			if cv2.contourArea(contour) < 2500: # this number is subject to change based on what size the standard image will be
-				continue
-
-			if not savedSingleShape:
-				box = cv2.cv.BoxPoints(cv2.minAreaRect(contour))
-				box = np.int0(box)
-
-				# draw a thick line around the contour we are interested in
-				cv2.drawContours(cny, [contour], 0, [255,255,255], 2)
-
-				self._singleShapeMod = self._fourPointTransform(cny, box)
-				self._singleShapeOrig = self._fourPointTransform(image, box)
-				savedSingleShape = True
-
-			count += 1
-		return count
-
 	def GetShape(self):
 		# TODO : determine if we need to rotate the image
 		#			by comparing ratios
 
-		shapeTemplates = ['templates/oval.jpg',
-						'templates/diamond.jpg',
-						'templates/squiggle.jpg']
+		shapeTemplates = ['images/templates/oval.jpg',
+						'images/templates/diamond.jpg',
+						'images/templates/squiggle.jpg']
 
 		shapeSize = (self._singleShapeMod.shape[1], self._singleShapeMod.shape[0])
 		mse = 1.0e400
