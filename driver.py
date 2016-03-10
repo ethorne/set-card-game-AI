@@ -6,7 +6,7 @@ def main():
 	for i in range(1,15):
 		cardName = 'images/extracted/' + str(i) + '.png';
 		cardImage = cv2.imread(cardName)
-		if cardImage == None:
+		if cardImage is None:
 			print 'Could not read image at ' + cardName
 			continue
 		print cardName

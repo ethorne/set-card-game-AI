@@ -33,7 +33,7 @@ class Card():
 		#	because Count populates self._singleShapeMod
 		#	as well as self._singleShapeOrig
 		self.Count = self.GetCount(image)
-		if (self._singleShapeMod == None or self._singleShapeOrig == None):
+		if (self._singleShapeMod is None or self._singleShapeOrig is None):
 			self.Shape = None
 			self.Color = None
 			self.Shade = None
@@ -43,7 +43,7 @@ class Card():
 		self.Color = self.GetColor() # must be called before shade
 		self.Shade = self.GetShade()
 
-		self.isValid = self.Count != None and self.Shape != None and self.Color != None and self.Shade != None
+		self.isValid = self.Count is not None and self.Shape is not None and self.Color is not None and self.Shade is not None
 
 	def __repr__(self):
 		return self.printCard()
@@ -78,7 +78,7 @@ class Card():
 
 		count = 0
 		savedSingleShape = False
-		contours = cv2.findContours(cny, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0];		
+		contours = cv2.findContours(cny, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
 		for contour in contours:
 			if cv2.contourArea(contour) < 2500: # this number is subject to change based on what size the standard image will be
 				continue
@@ -153,14 +153,13 @@ class Card():
 		# draw contours - if theres a lot, then its shaded
 		# otherwise, refer to self._nonWhitePercent
 
-		mod = self._increaseContrast(self._singleShapeOrig.copy())
+		mod = self._preprocess(self._singleShapeOrig.copy())
 		mod = self._crop(mod, .3)
-		cny = cv2.Canny(mod, 0, 255)
 		
 		count = 0
-		contours = cv2.findContours(cny, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0];
+		contours = cv2.findContours(mod, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
 
-		if (len(contours) > 10):
+		if (len(contours) > 6): # 6 is determined experimentally and varies with camera resolution
 			return SHADE.Striped
 		if self._nonWhitePercent > .5:
 			return SHADE.Solid
@@ -180,7 +179,7 @@ class Card():
 
 		shapeSize = (self._singleShapeMod.shape[1], self._singleShapeMod.shape[0])
 		mse = 1.0e400
-		shape = None;
+		shape = None
 		for i in range(len(shapeTemplates)):
 			tmp = cv2.imread(shapeTemplates[i], 0)
 			tmp = cv2.resize(tmp, shapeSize, interpolation=cv2.INTER_CUBIC)
@@ -242,6 +241,14 @@ class Card():
 	 
 		# return the warped image
 		return warped
+
+	def _preprocess(self, image):
+		# blur, contrast, denoise, and take inverse threshold
+		mod = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+		mod = self._increaseContrast(mod)
+		mod = cv2.fastNlMeansDenoising(mod, None, 10, 21, 20)
+		mod = cv2.threshold(mod, 60, 255, cv2.THRESH_BINARY_INV)[1]
+		return mod
 
 	def _increaseContrast(self, image):
 		hist,bins = np.histogram(image.flatten(),256,[0,256])
