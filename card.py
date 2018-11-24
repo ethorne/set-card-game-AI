@@ -78,13 +78,14 @@ class Card():
 
         count = 0
         savedSingleShape = False
-        contours = cv2.findContours(cny, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
+        contourImage, contours, hierarchy = cv2.findContours(cny, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
         for contour in contours:
             if cv2.contourArea(contour) < 2500: # this number is subject to change based on what size the standard image will be
                 continue
 
             if not savedSingleShape:
-                box = cv2.cv.BoxPoints(cv2.minAreaRect(contour))
+                box = cv2.boxPoints(cv2.minAreaRect(contour))
                 box = np.int0(box)
 
                 # draw a thick line around the contour we are interested in
@@ -211,7 +212,7 @@ class Card():
         rect[1] = pts[np.argmin(diff)]
         rect[3] = pts[np.argmax(diff)]
 
-         return rect
+        return rect
 
     def _fourPointTransform(self, image, pts):
         rect = self._orderPoints(pts)
@@ -262,7 +263,12 @@ class Card():
         return cdf[image]
 
     def _crop(self, image, percent):
-        widthDiff = image.shape[0] * percent
-        heightDiff = image.shape[1] * percent
-        return image[widthDiff:(image.shape[0] - widthDiff), heightDiff:(image.shape[1] - heightDiff)]
+        startY = image.shape[0] * percent
+        startX = image.shape[1] * percent
+        cropyY = int(image.shape[0] - startY)
+        cropX = int(image.shape[1] - startX)
+
+        image = image[int(startY):(cropyY), int(startX):(cropX)]
+
+        return image
 
