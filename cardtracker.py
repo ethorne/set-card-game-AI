@@ -6,12 +6,12 @@ import matplotlib.pyplot as plt
 from card import Card
 
 class card:
-    
+
     MIN_HEIGHT    = 120
     MIN_WIDTH     = 180
     MIN_PERIMETER = 400
     MAX_PERIMETER = 1400
-    
+
     def __init__(self):
         self.x = 0;
         self.y = 0;
@@ -35,7 +35,7 @@ class card:
 
         for cnt in contours:
             self.updateDimensions(cnt)
-            
+
             if          len(self.approxEdges) == 4:
                 if      self.w > self.MIN_WIDTH             and self.h > self.MIN_HEIGHT:
                     if  self.perimeter > self.MIN_PERIMETER and self.perimeter < self.MAX_PERIMETER :
@@ -45,15 +45,15 @@ class card:
 #cap = cv2.VideoCapture(1);
 #cap = cv2.VideoCapture(int(args["video"]));
 def mse(imageA, imageB):
-	# the 'Mean Squared Error' between the two images is the
-	# sum of the squared difference between the two images;
-	# NOTE: the two images must have the same dimension
-	err = np.sum((imageA.astype("float") - imageB.astype("float")) ** 2)
-	err /= float(imageA.shape[0] * imageA.shape[1])
-	
-	# return the MSE, the lower the error, the more "similar"
-	# the two images are
-	return err
+    # the 'Mean Squared Error' between the two images is the
+    # sum of the squared difference between the two images;
+    # NOTE: the two images must have the same dimension
+    err = np.sum((imageA.astype("float") - imageB.astype("float")) ** 2)
+    err /= float(imageA.shape[0] * imageA.shape[1])
+
+    # return the MSE, the lower the error, the more "similar"
+    # the two images are
+    return err
 
 def compareImages(imageA, imageB):
     mseError = mse(imageA, imageB)      # Mean Squared Error Increase  = Less similar
@@ -83,14 +83,14 @@ def findContours(mask):
     return contours
 
 def drawBoundingBox(x,y,w,h, maxCards,perimeter):
-    
+
     cv2.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),2)
     cv2.putText(frame,'Card '       + str(maxCards)                   ,(x+15,y-60),1,1,(0,255,0))
     #cv2.putText(frame,'Height : '   + str(h) + ', Width : '+ str(w),(x+15,y-40),1,1,(0,255,0))
     #cv2.putText(frame,'Perimeter : '+ str(perimeter)               ,(x+15,y-20),1,1,(0,255,0))
-    
+
 def makeSameSize(imageA,imageB):
-    
+
     # NOTE : Resizes imageA size of imageB
 
     height, width = imageB.shape[:2]
@@ -101,7 +101,7 @@ def saveImage(roi,maxCards):
 
     # Should be getting a cardObj maxCards and roi, and based on comparisions should update the card.cardImage np.array
 
-    if maxCards == 12 : # If this is the first card found, save it 
+    if maxCards == 12 : # If this is the first card found, save it
         cv2.imwrite('images/extracted/'+str(maxCards)+'.png', roi)
         maxCards = maxCards - 1
 
@@ -111,7 +111,7 @@ def saveImage(roi,maxCards):
             savedImage = cv2.imread('images/extracted/'+str(maxCards+1)+'.png')
             roi        = makeSameSize (roi,savedImage)
             similar    = compareImages(roi,savedImage)
-            
+
             if similar == False:
 
                 cv2.imwrite('images/extracted/'+str(maxCards)+'.png', roi)
@@ -126,19 +126,19 @@ def display(frame):
 
 cap = cv2.VideoCapture(1);
 while True:
-        
+
     _, frame = cap.read();
     maxCards    = 12          # Total Number of Cards we are able to detect
     mask     = createMask(frame)
     contours = findContours(mask)
-    
+
     # Should be creating and dealing with an array of card type objects
     '''
     cardObj = card()
     cardList = []
     for i in range(maxCards):
         a_card  = card()
-        cardList.append(a_card) 
+        cardList.append(a_card)
     '''
 
     for cnt in contours:
@@ -151,7 +151,7 @@ while True:
                 drawBoundingBox(x,y,w,h,maxCards,perimeter)
                 roi=frame[y:y+h,x:x+w]
                 maxCards = saveImage(roi,maxCards)
-                        
+
     display(frame)
     k = cv2.waitKey(5) & 0xFF
     if k == 27:  break;
