@@ -42,7 +42,6 @@ class card:
                         return True
             else:
                 return False
-
 #cap = cv2.VideoCapture(1);
 #cap = cv2.VideoCapture(int(args["video"]));
 def mse(imageA, imageB):
